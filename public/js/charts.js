@@ -16,10 +16,12 @@ function columnPath(x, y, w, h, r = 4) {
 
 /**
  * Pie chart.
- * data: [{ label, value, color (CSS colour or var()), tooltip }]
+ * data: [{ key, label, value, color (CSS colour or var()), tooltip }]
  * Slices are separated by a 2px surface-coloured gap. Returns a wrapper with a hover tooltip.
+ * onSelect(key) is called when a slice is clicked (or Enter/Space when focused); each slice
+ * carries data-key so the caller can mark the selected one.
  */
-export function pieChart(data, { size = 260, ariaLabel = 'Pie chart' } = {}) {
+export function pieChart(data, { size = 260, ariaLabel = 'Pie chart', onSelect } = {}) {
   const r = size / 2;
   const total = data.reduce((s, d) => s + d.value, 0);
   const root = svg('svg', { viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': ariaLabel, class: 'chart pie' });
@@ -52,6 +54,17 @@ export function pieChart(data, { size = 260, ariaLabel = 'Pie chart' } = {}) {
     shape.style.fill = d.color;
     shape.setAttribute('tabindex', 0);
     shape.setAttribute('aria-label', d.tooltip);
+    shape.dataset.key = d.key ?? d.label;
+    if (onSelect) {
+      shape.setAttribute('role', 'button');
+      shape.addEventListener('click', () => onSelect(shape.dataset.key));
+      shape.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(shape.dataset.key);
+        }
+      });
+    }
 
     const [tx, ty] = point(start + sweep / 2, r * 0.6);
     const show = () => {

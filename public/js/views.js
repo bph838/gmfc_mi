@@ -189,6 +189,30 @@ const ages = {
       };
     });
 
+    // Selectable groups: each age band, plus the two KPI groups.
+    const groups = new Map([
+      ...bands.map((b) => [b.label, { title: b.min === 0 ? b.label : `Aged ${b.label}`, test: (a) => a >= b.min && a <= b.max }]),
+      ['under18', { title: 'Under 18', test: (a) => a < 18 }],
+      ['65plus', { title: '65 and over', test: (a) => a >= 65 }],
+    ]);
+    let selected = null;
+    const detail = el('div');
+
+    const clickable = (node, key) => {
+      node.classList.add('clickable');
+      node.dataset.key = key;
+      node.tabIndex = 0;
+      node.setAttribute('role', 'button');
+      node.addEventListener('click', () => select(key));
+      node.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          select(key);
+        }
+      });
+      return node;
+    };
+
     const kpis = el(
       'div',
       { class: 'kpis' },
@@ -196,8 +220,8 @@ const ages = {
       stat(n ? median : '–', 'Median age'),
       stat(n ? list[0] : '–', 'Youngest'),
       stat(n ? list[n - 1] : '–', 'Oldest'),
-      stat(`${juniors}`, `Under 18 (${pct(juniors)})`),
-      stat(`${over65}`, `65 and over (${pct(over65)})`)
+      clickable(stat(`${juniors}`, `Under 18 (${pct(juniors)})`), 'under18'),
+      clickable(stat(`${over65}`, `65 and over (${pct(over65)})`), '65plus')
     );
 
     const legend = el(
@@ -208,12 +232,15 @@ const ages = {
         'tbody',
         {},
         bands.map((b) =>
-          el(
-            'tr',
-            {},
-            el('td', {}, el('span', { class: 'swatch', style: `background:${b.color}` }), b.label),
-            el('td', { class: 'num' }, b.value),
-            el('td', { class: 'num' }, pct(b.value))
+          clickable(
+            el(
+              'tr',
+              {},
+              el('td', {}, el('span', { class: 'swatch', style: `background:${b.color}` }), b.label),
+              el('td', { class: 'num' }, b.value),
+              el('td', { class: 'num' }, pct(b.value))
+            ),
+            b.label
           )
         )
       ),
@@ -224,10 +251,64 @@ const ages = {
       'section',
       { class: 'card' },
       el('h3', {}, `Members by age band (age today, ${formatDate(today)})`),
-      el('div', { class: 'pie-layout' }, pieChart(bands, { ariaLabel: 'Members by age band' }), legend)
+      el('p', { class: 'muted' }, 'Click a slice, an age band or the Under 18 / 65 and over tiles to see who is in it.'),
+      el(
+        'div',
+        { class: 'pie-layout' },
+        pieChart(bands.map((b) => ({ ...b, key: b.label })), { ariaLabel: 'Members by age band', onSelect: (key) => select(key) }),
+        legend
+      )
     );
 
-    const parts = [kpis, chartCard];
+    function select(key) {
+      selected = selected === key ? null : key;
+      root.querySelectorAll('[data-key]').forEach((node) => {
+        const on = node.dataset.key === selected;
+        node.classList.toggle('selected', on);
+        if (on && node.classList.contains('slice')) node.parentNode.append(node); // draw outline on top
+      });
+
+      if (!selected) return detail.replaceChildren();
+      const group = groups.get(selected);
+      const people = valid.filter((x) => group.test(x.age)).sort((a, b) => a.age - b.age || a.dob - b.dob);
+      const close = el('button', { type: 'button', class: 'secondary' }, 'Close');
+      close.addEventListener('click', () => select(selected));
+
+      detail.replaceChildren(
+        el(
+          'section',
+          { class: 'card' },
+          el('div', { class: 'card-head' }, el('h3', {}, `${group.title}: ${people.length} member${people.length === 1 ? '' : 's'}`), close),
+          el(
+            'div',
+            { class: 'table-wrap' },
+            el(
+              'table',
+              {},
+              el('thead', {}, el('tr', {}, ['Name', 'Email', 'Date of birth', 'Age', 'Membership'].map((h) => el('th', { class: h === 'Age' ? 'num' : '' }, h)))),
+              el(
+                'tbody',
+                {},
+                people.map(({ m, dob, age }) =>
+                  el(
+                    'tr',
+                    {},
+                    el('td', {}, `${m['First name']} ${m['Last name']}`),
+                    el('td', {}, m['Email'] ? el('a', { href: `mailto:${m['Email']}` }, m['Email']) : ''),
+                    el('td', {}, formatDate(dob)),
+                    el('td', { class: 'num' }, age),
+                    el('td', {}, m['Membership'] || '')
+                  )
+                )
+              )
+            )
+          )
+        )
+      );
+      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    const parts = [kpis, chartCard, detail];
     if (suspect.length) {
       parts.push(
         el(
@@ -250,7 +331,8 @@ const ages = {
         )
       );
     }
-    return el('div', { class: 'stack' }, ...parts);
+    const root = el('div', { class: 'stack' }, ...parts);
+    return root;
   },
 };
 
