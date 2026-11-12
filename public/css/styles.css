@@ -1,0 +1,69 @@
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --text: #1d2330;
+  --muted: #6b7280;
+  --border: #e3e6eb;
+  --accent: #1f5fa8;
+  --error: #b42318;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171c;
+    --surface: #1d2129;
+    --text: #e6e8ec;
+    --muted: #9aa2ad;
+    --border: #2d333d;
+    --accent: #6ea8ec;
+    --error: #f97066;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+h1 { font-size: 1.25rem; margin: 0; }
+h2 { font-size: 1.1rem; margin: 0 0 1rem; }
+h3 { font-size: 0.95rem; margin: 0 0 0.75rem; }
+.muted { color: var(--muted); font-size: 0.85rem; }
+.error { color: var(--error); }
+
+.topbar {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding: 1rem 1.5rem; background: var(--surface); border-bottom: 1px solid var(--border);
+}
+button {
+  font: inherit; padding: 0.45rem 0.9rem; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: #fff;
+}
+
+.nav { display: flex; gap: 0.25rem; padding: 0 1.5rem; background: var(--surface); border-bottom: 1px solid var(--border); }
+.nav a {
+  padding: 0.7rem 0.9rem; color: var(--muted); text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+main { padding: 1.5rem; max-width: 1200px; }
+
+.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+.stat-value { font-size: 2.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat-label { color: var(--muted); }
+
+.toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+.search {
+  font: inherit; padding: 0.45rem 0.7rem; width: min(320px, 100%);
+  border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text);
+}
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.compact td, table.compact th { padding: 0.3rem 0.4rem; }

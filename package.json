@@ -1,0 +1,17 @@
+{
+  "name": "gmfc-mi",
+  "version": "0.1.0",
+  "description": "Gordano Model Flying Club - membership management information",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "open": "node server.js --open",
+    "dev": "node --watch server.js",
+    "members": "node scripts/list-members.js",
+    "check": "node --check server.js && node --check scripts/list-members.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
