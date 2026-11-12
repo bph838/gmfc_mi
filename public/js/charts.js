@@ -15,6 +15,68 @@ function columnPath(x, y, w, h, r = 4) {
 }
 
 /**
+ * Pie chart.
+ * data: [{ label, value, color (CSS colour or var()), tooltip }]
+ * Slices are separated by a 2px surface-coloured gap. Returns a wrapper with a hover tooltip.
+ */
+export function pieChart(data, { size = 260, ariaLabel = 'Pie chart' } = {}) {
+  const r = size / 2;
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const root = svg('svg', { viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': ariaLabel, class: 'chart pie' });
+
+  const wrap = document.createElement('div');
+  wrap.className = 'chart-wrap pie-wrap';
+  const tip = document.createElement('div');
+  tip.className = 'chart-tip';
+  tip.hidden = true;
+
+  const point = (angle, radius = r) => [r + radius * Math.sin(angle), r - radius * Math.cos(angle)];
+  let angle = 0;
+
+  data.filter((d) => d.value > 0).forEach((d) => {
+    const sweep = (d.value / total) * Math.PI * 2;
+    const start = angle;
+    const end = angle + sweep;
+    angle = end;
+
+    let shape;
+    if (sweep >= Math.PI * 2 - 1e-9) {
+      shape = svg('circle', { cx: r, cy: r, r: r - 1 });
+    } else {
+      const [x1, y1] = point(start, r - 1);
+      const [x2, y2] = point(end, r - 1);
+      const large = sweep > Math.PI ? 1 : 0;
+      shape = svg('path', { d: `M${r},${r} L${x1},${y1} A${r - 1},${r - 1} 0 ${large} 1 ${x2},${y2} Z` });
+    }
+    shape.setAttribute('class', 'slice');
+    shape.style.fill = d.color;
+    shape.setAttribute('tabindex', 0);
+    shape.setAttribute('aria-label', d.tooltip);
+
+    const [tx, ty] = point(start + sweep / 2, r * 0.6);
+    const show = () => {
+      tip.textContent = d.tooltip;
+      tip.hidden = false;
+      tip.style.left = `${(tx / size) * 100}%`;
+      tip.style.top = `${(ty / size) * 100}%`;
+      shape.classList.add('hover');
+    };
+    const hide = () => {
+      tip.hidden = true;
+      shape.classList.remove('hover');
+    };
+    shape.addEventListener('mouseenter', show);
+    shape.addEventListener('focus', show);
+    shape.addEventListener('mouseleave', hide);
+    shape.addEventListener('blur', hide);
+    root.append(shape);
+  });
+
+  wrap.append(root, tip);
+  return wrap;
+}
+
+/**
  * Column chart.
  * data: [{ label, value, tooltip, muted }]  (muted = e.g. a month still to come)
  * Returns a wrapper element containing the SVG and a hover tooltip.

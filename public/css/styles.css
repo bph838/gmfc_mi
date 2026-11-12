@@ -9,7 +9,12 @@
   --series-1: #2a78d6;
   --grid: #ebebe8;
   --axis: #c9c8c2;
-  --future: #d9d8d3;
+  /* Ordinal ramp for age bands (validated: young = light, old = dark) */
+  --age-1: #86b6ef;
+  --age-2: #3987e5;
+  --age-3: #256abf;
+  --age-4: #184f95;
+  --age-5: #0d366b;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -23,7 +28,11 @@
     --series-1: #3987e5;
     --grid: #262a32;
     --axis: #3a404b;
-    --future: #3a404b;
+    --age-1: #256abf;
+    --age-2: #3987e5;
+    --age-3: #6da7ec;
+    --age-4: #9ec5f4;
+    --age-5: #cde2fb;
   }
 }
 
@@ -90,6 +99,14 @@ table.compact td, table.compact th { padding: 0.3rem 0.4rem; }
 .chart .col { cursor: default; outline: none; }
 .chart .col.hover .hit, .chart .col:focus-visible .hit { fill: var(--grid); }
 .chart .col.muted .tick { opacity: 0.55; }
+.kpis { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.pie-layout { display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; }
+.pie-wrap { width: min(260px, 100%); flex: none; }
+.chart .slice { stroke: var(--surface); stroke-width: 2; stroke-linejoin: round; outline: none; }
+.chart .slice.hover, .chart .slice:focus-visible { opacity: 0.8; }
+.legend { width: auto; min-width: 260px; }
+.legend tfoot td { font-weight: 600; border-bottom: none; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 0.5rem; vertical-align: baseline; }
 .chart-tip {
   position: absolute; transform: translate(-50%, calc(-100% - 10px)); pointer-events: none;
   background: var(--surface); color: var(--text); border: 1px solid var(--border);

@@ -40,6 +40,14 @@ export function membershipYear(date = new Date()) {
   return { start, end, label: `${startYear}/${String(startYear + 1).slice(-2)}`, months };
 }
 
+/** Age in whole years on a given date. */
+export function ageOn(dob, date = new Date()) {
+  let age = date.getFullYear() - dob.getFullYear();
+  const birthdayThisYear = new Date(date.getFullYear(), dob.getMonth(), dob.getDate());
+  if (date < birthdayThisYear) age--;
+  return age;
+}
+
 export const formatDate = (d) =>
   d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
