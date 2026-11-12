@@ -1,7 +1,8 @@
 // View registry. Each view is { id, title, render(dataset) => HTMLElement }.
 // To add a new report, write a view object and add it to the `views` array.
 
-import { countBy } from './data.js';
+import { countBy, parseDate, membershipYear, formatDate } from './data.js';
+import { columnChart } from './charts.js';
 
 const el = (tag, attrs = {}, ...children) => {
   const node = document.createElement(tag);
@@ -71,6 +72,80 @@ const memberList = {
   },
 };
 
+const joiners = {
+  id: 'joiners',
+  title: 'Joiners',
+  render({ members }) {
+    const today = new Date();
+    const year = membershipYear(today);
+    const undated = members.filter((m) => !parseDate(m['Member since'])).length;
+
+    const joined = members
+      .map((m) => ({ m, since: parseDate(m['Member since']) }))
+      .filter(({ since }) => since && since >= year.start && since < year.end)
+      .sort((a, b) => a.since - b.since);
+
+    const monthName = (d, style = 'short') => d.toLocaleDateString('en-GB', { month: style });
+    const data = year.months.map((monthStart) => {
+      const n = joined.filter(({ since }) => since.getFullYear() === monthStart.getFullYear() && since.getMonth() === monthStart.getMonth()).length;
+      const future = monthStart > today;
+      const name = `${monthName(monthStart, 'long')} ${monthStart.getFullYear()}`;
+      return {
+        label: monthName(monthStart),
+        value: n,
+        muted: future,
+        tooltip: future ? `${name}: still to come` : `${name}: ${n} joined`,
+      };
+    });
+
+    const lastDay = new Date(year.end.getTime() - 86400000);
+    const header = el(
+      'div',
+      { class: 'grid' },
+      el(
+        'section',
+        { class: 'card stat' },
+        el('div', { class: 'stat-value' }, joined.length),
+        el('div', { class: 'stat-label' }, `Joined in ${year.label} (${formatDate(year.start)} – ${formatDate(lastDay)})`)
+      ),
+      el(
+        'section',
+        { class: 'card stat' },
+        el('div', { class: 'stat-value' }, undated),
+        el('div', { class: 'stat-label' }, 'Records with no "Member since" date (not counted)')
+      )
+    );
+
+    const chart = el(
+      'section',
+      { class: 'card' },
+      el('h3', {}, `New members by month, ${year.label}`),
+      columnChart(data, { ariaLabel: `New members by month, ${year.label}` })
+    );
+
+    const cols = ['First name', 'Last name', 'Membership', 'Membership state'];
+    const list = el(
+      'section',
+      { class: 'card' },
+      el('h3', {}, 'Members joined this year'),
+      joined.length
+        ? el(
+            'div',
+            { class: 'table-wrap' },
+            el(
+              'table',
+              {},
+              el('thead', {}, el('tr', {}, el('th', {}, 'Member since'), cols.map((c) => el('th', {}, c)))),
+              el('tbody', {}, joined.map(({ m, since }) => el('tr', {}, el('td', {}, formatDate(since)), cols.map((c) => el('td', {}, m[c] || '')))))
+            )
+          )
+        : el('p', { class: 'muted' }, 'No members have joined yet this year.')
+    );
+
+    return el('div', { class: 'stack' }, header, chart, list);
+  },
+};
+
 const columnsView = {
   id: 'columns',
   title: 'Data fields',
@@ -89,4 +164,4 @@ const columnsView = {
   },
 };
 
-export const views = [overview, memberList, columnsView];
+export const views = [overview, joiners, memberList, columnsView];

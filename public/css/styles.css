@@ -6,6 +6,10 @@
   --border: #e3e6eb;
   --accent: #1f5fa8;
   --error: #b42318;
+  --series-1: #2a78d6;
+  --grid: #ebebe8;
+  --axis: #c9c8c2;
+  --future: #d9d8d3;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -16,6 +20,10 @@
     --border: #2d333d;
     --accent: #6ea8ec;
     --error: #f97066;
+    --series-1: #3987e5;
+    --grid: #262a32;
+    --axis: #3a404b;
+    --future: #3a404b;
   }
 }
 
@@ -67,3 +75,24 @@ th, td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var
 th { color: var(--muted); font-weight: 600; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.compact td, table.compact th { padding: 0.3rem 0.4rem; }
+
+.stack { display: grid; gap: 1rem; }
+
+/* Charts */
+.chart-wrap { position: relative; }
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .grid { stroke: var(--grid); stroke-width: 1; }
+.chart .axis { stroke: var(--axis); stroke-width: 1; }
+.chart .tick { fill: var(--muted); font-size: 12px; }
+.chart .value { fill: var(--text); font-size: 12px; font-weight: 600; }
+.chart .bar { fill: var(--series-1); }
+.chart .hit { fill: transparent; }
+.chart .col { cursor: default; outline: none; }
+.chart .col.hover .hit, .chart .col:focus-visible .hit { fill: var(--grid); }
+.chart .col.muted .tick { opacity: 0.55; }
+.chart-tip {
+  position: absolute; transform: translate(-50%, calc(-100% - 10px)); pointer-events: none;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.3rem 0.55rem; font-size: 0.8rem; white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+}
