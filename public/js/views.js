@@ -3,18 +3,30 @@
 
 import { countBy, parseDate, membershipYear, formatDate, ageOn } from './data.js';
 import { columnChart, pieChart } from './charts.js';
+import { el } from './dom.js';
+import { sortableTable } from './table.js';
 
-const el = (tag, attrs = {}, ...children) => {
-  const node = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'class') node.className = v;
-    else node.setAttribute(k, v);
-  }
-  for (const child of children.flat()) {
-    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
-  }
-  return node;
-};
+// Column definitions for sortableTable, reading from a member record.
+// `pick` lets the same helpers work on wrapped rows like { m, dob, age }.
+const textCol = (field, label = field, pick = (r) => r) => ({ label, value: (r) => pick(r)[field] || '' });
+const dateCol = (field, label = field, pick = (r) => r) => ({
+  label,
+  value: (r) => parseDate(pick(r)[field]),
+  render: (r) => {
+    const d = parseDate(pick(r)[field]);
+    return d ? formatDate(d) : pick(r)[field] || '';
+  },
+});
+const nameCol = (pick = (r) => r) => ({
+  label: 'Name',
+  value: (r) => `${pick(r)['Last name']} ${pick(r)['First name']}`, // sort by surname
+  render: (r) => `${pick(r)['First name']} ${pick(r)['Last name']}`,
+});
+const emailCol = (pick = (r) => r) => ({
+  label: 'Email',
+  value: (r) => pick(r)['Email'] || '',
+  render: (r) => (pick(r)['Email'] ? el('a', { href: `mailto:${pick(r)['Email']}` }, pick(r)['Email']) : ''),
+});
 
 function breakdownTable(title, rows, column) {
   return el(
@@ -47,28 +59,33 @@ const memberList = {
   id: 'members',
   title: 'Members',
   render({ members }) {
-    const columns = ['First name', 'Last name', 'Membership', 'Membership state', 'Member since', 'Expires on'];
+    const searchFields = ['First name', 'Last name', 'Email', 'Membership', 'Membership state'];
     const search = el('input', { type: 'search', placeholder: 'Search members…', class: 'search' });
-    const tbody = el('tbody');
     const count = el('span', { class: 'muted' });
+    const table = sortableTable({
+      columns: [
+        textCol('First name'),
+        textCol('Last name'),
+        emailCol(),
+        textCol('Membership'),
+        textCol('Membership state'),
+        dateCol('Member since'),
+        dateCol('Expires on'),
+      ],
+      rows: members,
+      sort: { column: 1, dir: 'asc' },
+    });
 
     const draw = () => {
       const q = search.value.trim().toLowerCase();
-      const filtered = q
-        ? members.filter((m) => columns.some((c) => (m[c] || '').toLowerCase().includes(q)))
-        : members;
-      tbody.replaceChildren(...filtered.map((m) => el('tr', {}, columns.map((c) => el('td', {}, m[c] || '')))));
+      const filtered = q ? members.filter((m) => searchFields.some((c) => (m[c] || '').toLowerCase().includes(q))) : members;
+      table.setRows(filtered);
       count.textContent = `${filtered.length} of ${members.length}`;
     };
     search.addEventListener('input', draw);
     draw();
 
-    return el(
-      'section',
-      { class: 'card' },
-      el('div', { class: 'toolbar' }, search, count),
-      el('div', { class: 'table-wrap' }, el('table', {}, el('thead', {}, el('tr', {}, columns.map((c) => el('th', {}, c)))), tbody))
-    );
+    return el('section', { class: 'card' }, el('div', { class: 'toolbar' }, search, count), table.element);
   },
 };
 
@@ -123,22 +140,23 @@ const joiners = {
       columnChart(data, { ariaLabel: `New members by month, ${year.label}` })
     );
 
-    const cols = ['First name', 'Last name', 'Membership', 'Membership state'];
+    const pick = (r) => r.m;
     const list = el(
       'section',
       { class: 'card' },
       el('h3', {}, 'Members joined this year'),
       joined.length
-        ? el(
-            'div',
-            { class: 'table-wrap' },
-            el(
-              'table',
-              {},
-              el('thead', {}, el('tr', {}, el('th', {}, 'Member since'), cols.map((c) => el('th', {}, c)))),
-              el('tbody', {}, joined.map(({ m, since }) => el('tr', {}, el('td', {}, formatDate(since)), cols.map((c) => el('td', {}, m[c] || '')))))
-            )
-          )
+        ? sortableTable({
+            columns: [
+              { label: 'Member since', value: (r) => r.since, render: (r) => formatDate(r.since) },
+              textCol('First name', undefined, pick),
+              textCol('Last name', undefined, pick),
+              textCol('Membership', undefined, pick),
+              textCol('Membership state', undefined, pick),
+            ],
+            rows: joined,
+            sort: { column: 0, dir: 'asc' },
+          }).element
         : el('p', { class: 'muted' }, 'No members have joined yet this year.')
     );
 
@@ -270,7 +288,8 @@ const ages = {
 
       if (!selected) return detail.replaceChildren();
       const group = groups.get(selected);
-      const people = valid.filter((x) => group.test(x.age)).sort((a, b) => a.age - b.age || a.dob - b.dob);
+      const people = valid.filter((x) => group.test(x.age));
+      const pick = (r) => r.m;
       const close = el('button', { type: 'button', class: 'secondary' }, 'Close');
       close.addEventListener('click', () => select(selected));
 
@@ -279,30 +298,17 @@ const ages = {
           'section',
           { class: 'card' },
           el('div', { class: 'card-head' }, el('h3', {}, `${group.title}: ${people.length} member${people.length === 1 ? '' : 's'}`), close),
-          el(
-            'div',
-            { class: 'table-wrap' },
-            el(
-              'table',
-              {},
-              el('thead', {}, el('tr', {}, ['Name', 'Email', 'Date of birth', 'Age', 'Membership'].map((h) => el('th', { class: h === 'Age' ? 'num' : '' }, h)))),
-              el(
-                'tbody',
-                {},
-                people.map(({ m, dob, age }) =>
-                  el(
-                    'tr',
-                    {},
-                    el('td', {}, `${m['First name']} ${m['Last name']}`),
-                    el('td', {}, m['Email'] ? el('a', { href: `mailto:${m['Email']}` }, m['Email']) : ''),
-                    el('td', {}, formatDate(dob)),
-                    el('td', { class: 'num' }, age),
-                    el('td', {}, m['Membership'] || '')
-                  )
-                )
-              )
-            )
-          )
+          sortableTable({
+            columns: [
+              nameCol(pick),
+              emailCol(pick),
+              { label: 'Date of birth', value: (r) => r.dob, render: (r) => formatDate(r.dob) },
+              { label: 'Age', value: (r) => r.age, num: true },
+              textCol('Membership', undefined, pick),
+            ],
+            rows: people,
+            sort: { column: 3, dir: 'asc' },
+          }).element
         )
       );
       detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -316,18 +322,15 @@ const ages = {
           { class: 'card' },
           el('h3', {}, `Check date of birth (${suspect.length})`),
           el('p', { class: 'muted' }, `Missing, or giving an age over ${MAX_PLAUSIBLE_AGE}. These are left out of the figures above.`),
-          el(
-            'table',
-            { class: 'compact' },
-            el('thead', {}, el('tr', {}, el('th', {}, 'Name'), el('th', {}, 'Date of birth'), el('th', {}, 'Membership'))),
-            el(
-              'tbody',
-              {},
-              suspect.map(({ m }) =>
-                el('tr', {}, el('td', {}, `${m['First name']} ${m['Last name']}`), el('td', {}, m['Date of birth'] || '(blank)'), el('td', {}, m['Membership']))
-              )
-            )
-          )
+          sortableTable({
+            columns: [
+              nameCol((r) => r.m),
+              { label: 'Date of birth', value: (r) => r.m['Date of birth'] || '', render: (r) => r.m['Date of birth'] || '(blank)' },
+              textCol('Membership', undefined, (r) => r.m),
+            ],
+            rows: suspect,
+            className: 'compact',
+          }).element
         )
       );
     }
@@ -344,12 +347,14 @@ const columnsView = {
       'section',
       { class: 'card' },
       el('p', { class: 'muted' }, 'Fields found in the CSV and how many records have a value for each.'),
-      el(
-        'table',
-        { class: 'compact' },
-        el('thead', {}, el('tr', {}, el('th', {}, 'Field'), el('th', { class: 'num' }, 'Populated'))),
-        el('tbody', {}, headers.map((h) => el('tr', {}, el('td', {}, h), el('td', { class: 'num' }, members.filter((m) => m[h]).length))))
-      )
+      sortableTable({
+        columns: [
+          { label: 'Field', value: (h) => h },
+          { label: 'Populated', value: (h) => members.filter((m) => m[h]).length, num: true },
+        ],
+        rows: headers,
+        className: 'compact',
+      }).element
     );
   },
 };
